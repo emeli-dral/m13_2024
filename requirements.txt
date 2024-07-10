@@ -1,0 +1,13 @@
+jupyter
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+plotly
+shap
+xgboost
+catboost
+evidently
+facets_overview
+ydata_profiling
