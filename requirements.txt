@@ -11,3 +11,7 @@ catboost
 evidently
 facets_overview
 ydata_profiling
+tqdm
+hyperopt
+fastparquet
+mlflow
