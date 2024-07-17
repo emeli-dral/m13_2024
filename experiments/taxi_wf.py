@@ -1,16 +1,19 @@
 import pandas as pd
 from sklearn.metrics import mean_squared_error, root_mean_squared_error
 import xgboost as xgb
+from prefect import flow, task
 
 best_params = {
     "max_depth":6,
     "reg_alpha":0.07465666333107646
 }
 
+@task(log_prints=True, name="task_load_data", retries=3)
 def load_data(path):
     data = pd.read_parquet(path)
     return data
-
+    
+@task(log_prints=True)
 def process_dataframe(data):
     data.lpep_dropoff_datetime = pd.to_datetime(data.lpep_dropoff_datetime)
     data.lpep_pickup_datetime = pd.to_datetime(data.lpep_pickup_datetime)
@@ -23,6 +26,7 @@ def process_dataframe(data):
     data['DOLocationID'].astype(str, copy=False)  
     return data
 
+@task(log_prints=True)
 def prepare_dataset(data):
     num_features = ['trip_distance', 'extra', 'fare_amount']
     cat_features = ['PULocationID', 'DOLocationID']
@@ -30,8 +34,10 @@ def prepare_dataset(data):
     y = data['duration']
     xgb_dataset = xgb.DMatrix(X, label=y)
     return xgb_dataset
-    
-def train_model(train, validation):   
+
+@task(log_prints=True)
+def train_model(train, validation):
+    xgb.set_config(verbosity=0)
     booster = xgb.train(
                 params=best_params,
                 dtrain=train,
@@ -41,13 +47,15 @@ def train_model(train, validation):
             )
     return booster
 
+@task(log_prints=True)
 def evaluate_model(booster, validation):
     y_pred = booster.predict(validation)
     rmse = root_mean_squared_error(validation.get_label(), y_pred)
     print(f"rmse: {rmse:.3f}")
     return rmse
 
-def main():
+@flow(name="NYC Green Taxi route duration forecast")
+def main():    
     raw_train = load_data('data/green_tripdata_2024-03.parquet')
     raw_validation = load_data('data/green_tripdata_2024-04.parquet')
     processed_train = process_dataframe(raw_train)
